@@ -2,11 +2,13 @@
 import React from 'react';
 import { ClassRoom, Subject, Teacher, Student, AttendanceStatus } from './types';
 
+export const GRADES = ['X', 'XI', 'XII'];
+
 export const INITIAL_CLASSES: ClassRoom[] = [
-  { id: '1', name: 'X-MIPA-1' },
-  { id: '2', name: 'X-MIPA-2' },
-  { id: '3', name: 'XI-IPS-1' },
-  { id: '4', name: 'XII-MIPA-1' },
+  { id: '1', name: 'X-MIPA-1', grade: 'X' },
+  { id: '2', name: 'X-MIPA-2', grade: 'X' },
+  { id: '3', name: 'XI-IPS-1', grade: 'XI' },
+  { id: '4', name: 'XII-MIPA-1', grade: 'XII' },
 ];
 
 export const INITIAL_SUBJECTS: Subject[] = [

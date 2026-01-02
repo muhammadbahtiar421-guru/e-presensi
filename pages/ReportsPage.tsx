@@ -74,8 +74,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ records, students, classes, s
         {/* Print Header */}
         <div className="hidden print-only p-8 border-b-2 border-slate-900 text-center">
           <h1 className="text-2xl font-bold">LAPORAN KEHADIRAN SISWA</h1>
-          <h2 className="text-xl font-bold">SMAN 1 KWANYAR</h2>
-          <p className="mt-2">Filter: {filterClass ? classes.find(c => c.id === filterClass)?.name : 'Semua Kelas'} | {filterDate || filterMonth || 'Semua Waktu'}</p>
+          <h2 className="text-xl font-bold uppercase">SMAN 1 KWANYAR</h2>
+          <p className="mt-2 text-sm">
+            Filter: {filterClass ? classes.find(c => c.id === filterClass)?.name : 'Semua Kelas'} | {filterDate || filterMonth || 'Semua Waktu'}
+          </p>
         </div>
 
         <div className="overflow-x-auto">
@@ -83,10 +85,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ records, students, classes, s
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tgl / Jam</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Kelas / Mapel</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Guru</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Ringkasan Kehadiran</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">Tgl / Jam</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">Jenjang / Kelas / Mapel</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">Guru & Jurnal</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">Statistik</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -98,25 +100,45 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ records, students, classes, s
                   const alpa = rec.students.filter(s => s.status === AttendanceStatus.ALPA).length;
 
                   return (
-                    <tr key={rec.id} className="hover:bg-slate-50">
+                    <tr key={rec.id} className="hover:bg-slate-50 align-top">
                       <td className="px-6 py-4">
-                        <p className="font-bold text-slate-800">{rec.date}</p>
-                        <p className="text-xs text-slate-500">{rec.day}, Jam Ke-{rec.period}</p>
+                        <p className="font-bold text-slate-800 text-sm">{rec.date}</p>
+                        <p className="text-[10px] text-slate-500">{rec.day}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">Jam {rec.period}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-bold text-slate-800">{classes.find(c => c.id === rec.classId)?.name}</p>
+                        <p className="font-bold text-slate-800 text-sm">{classes.find(c => c.id === rec.classId)?.name}</p>
                         <p className="text-xs text-slate-500">{subjects.find(s => s.id === rec.subjectId)?.name}</p>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase mt-1">Jenjang: {rec.grade}</p>
+                      </td>
+                      <td className="px-6 py-4 max-w-xs">
+                        <p className="text-sm font-bold text-slate-700">{teachers.find(t => t.id === rec.teacherId)?.name}</p>
+                        <div className="mt-2 bg-slate-50 p-3 rounded-lg border border-slate-100 italic text-xs text-slate-600 leading-relaxed">
+                          "{rec.journal || 'Tidak ada catatan jurnal.'}"
+                        </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm font-medium text-slate-700">{teachers.find(t => t.id === rec.teacherId)?.name}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">H:{hadir}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">I:{izin}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">S:{sakit}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">D:{disp}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded">A:{alpa}</span>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex justify-between items-center text-[10px] border-b border-slate-50 pb-1">
+                            <span className="text-emerald-600 font-bold">HADIR</span>
+                            <span className="font-bold">{hadir}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] border-b border-slate-50 pb-1">
+                            <span className="text-amber-600 font-bold">IZIN</span>
+                            <span className="font-bold">{izin}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] border-b border-slate-50 pb-1">
+                            <span className="text-blue-600 font-bold">SAKIT</span>
+                            <span className="font-bold">{sakit}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] border-b border-slate-50 pb-1">
+                            <span className="text-purple-600 font-bold">DISP</span>
+                            <span className="font-bold">{disp}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-rose-600 font-bold">ALPA</span>
+                            <span className="font-bold">{alpa}</span>
+                          </div>
                         </div>
                       </td>
                     </tr>

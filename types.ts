@@ -28,6 +28,7 @@ export interface Subject {
 export interface ClassRoom {
   id: string;
   name: string;
+  grade: string; // X, XI, XII
 }
 
 export interface AttendanceRecord {
@@ -38,6 +39,8 @@ export interface AttendanceRecord {
   teacherId: string;
   subjectId: string;
   classId: string;
+  grade: string;
+  journal: string; // Jurnal Pembelajaran
   students: {
     studentId: string;
     status: AttendanceStatus;
