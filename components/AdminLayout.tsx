@@ -12,13 +12,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, onLogout }) => {
 
   const menuItems = [
     { path: '/admin', label: 'Dashboard', icon: 'fa-chart-pie' },
+    { path: '/admin/monitoring', label: 'Monitoring KS', icon: 'fa-eye' },
     { path: '/admin/manage', label: 'Manajemen Data', icon: 'fa-database' },
     { path: '/admin/reports', label: 'Laporan', icon: 'fa-file-alt' },
+    { path: '/admin/settings', label: 'Pengaturan Akun', icon: 'fa-user-cog' },
   ];
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex-shrink-0 hidden md:flex flex-col">
         <div className="p-6 border-b border-slate-800 flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
@@ -34,7 +35,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, onLogout }) => {
               to={item.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 location.pathname === item.path 
-                  ? 'bg-blue-600 text-white' 
+                  ? 'bg-blue-600 text-white shadow-lg' 
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}
             >
@@ -55,29 +56,27 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, onLogout }) => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 sticky top-0 z-40">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-slate-800">
+            <h2 className="text-xl font-bold text-slate-800 uppercase tracking-tight">
               {menuItems.find(i => i.path === location.pathname)?.label || 'Admin Portal'}
             </h2>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-slate-500 hidden sm:block">Welcome, Admin</span>
-            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
+            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 border border-slate-200 shadow-sm">
               <i className="fas fa-user-circle text-2xl"></i>
             </div>
           </div>
         </header>
         
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-8 overflow-y-auto pb-24 md:pb-8">
           {children}
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-3 z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-3 z-50 shadow-2xl">
         {menuItems.map(item => (
           <Link
             key={item.path}

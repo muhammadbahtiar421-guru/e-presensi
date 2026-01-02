@@ -1,25 +1,43 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Teacher, User } from '../types';
 
 interface LoginPageProps {
-  onLogin: () => void;
+  teachers: Teacher[];
+  adminCredentials: any;
+  onLogin: (user: User) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ teachers, adminCredentials, onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock authentication
-    if (username === 'admin' && password === 'admin123') {
-      localStorage.setItem('isAdminLoggedIn', 'true');
-      onLogin();
-    } else {
-      setError('Username atau password salah. (Hint: admin/admin123)');
+    setError('');
+    
+    // Check Admin with dynamic credentials
+    if (username === adminCredentials.username && password === adminCredentials.password) {
+      onLogin({ id: 'admin', username: adminCredentials.username, role: 'admin' });
+      return;
     }
+
+    // Check Teacher
+    const teacher = teachers.find(t => t.username === username && t.password === password);
+    if (teacher) {
+      onLogin({ 
+        id: teacher.id, 
+        username: teacher.username || '', 
+        role: 'teacher',
+        teacherId: teacher.id 
+      });
+      return;
+    }
+
+    // Tampilan notifikasi salah yang simpel
+    setError('Username atau password salah!');
   };
 
   return (
@@ -31,7 +49,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-          Admin Portal
+          Login Portal
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
           SMAN 1 Kwanyar
@@ -42,7 +60,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="bg-white py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-slate-200">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-medium">
+              <div className="bg-rose-100 border-l-4 border-rose-500 text-rose-700 px-4 py-3 rounded shadow-sm text-sm font-bold flex items-center gap-2 animate-shake">
+                <i className="fas fa-exclamation-circle"></i>
                 {error}
               </div>
             )}
@@ -58,7 +77,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="admin"
+                  placeholder="Username"
                 />
               </div>
             </div>

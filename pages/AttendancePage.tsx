@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Teacher, Subject, ClassRoom, Student, AttendanceStatus, AttendanceRecord } from '../types';
+import { Teacher, Subject, ClassRoom, Student, AttendanceStatus, AttendanceRecord, User } from '../types';
 import { DAYS_ID, STATUS_COLORS, STATUS_ICONS, GRADES } from '../constants';
 import { Link } from 'react-router-dom';
 
@@ -10,9 +10,11 @@ interface AttendancePageProps {
   classes: ClassRoom[];
   students: Student[];
   onSubmit: (record: AttendanceRecord) => void;
+  currentUser: User | null;
+  onLogout: () => void;
 }
 
-const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, classes, students, onSubmit }) => {
+const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, classes, students, onSubmit, currentUser, onLogout }) => {
   const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
@@ -23,20 +25,29 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
   const dayName = DAYS_ID[now.getDay()];
 
-  // Logic for filtered classes and students
+  useEffect(() => {
+    if (currentUser?.role === 'teacher' && currentUser.teacherId) {
+      const t = teachers.find(item => item.id === currentUser.teacherId);
+      if (t) {
+        setSelectedTeacher(t.id);
+        if (t.subjectId) setSelectedSubject(t.subjectId);
+        if (t.classId) {
+          const c = classes.find(item => item.id === t.classId);
+          if (c) {
+            setSelectedGrade(c.grade);
+            setSelectedClass(c.id);
+          }
+        }
+      }
+    }
+  }, [currentUser, teachers, classes]);
+
   const filteredClasses = classes.filter(c => c.grade === selectedGrade);
   const filteredStudents = students.filter(s => s.classId === selectedClass);
 
   useEffect(() => {
-    // Reset class when grade changes
-    setSelectedClass('');
-  }, [selectedGrade]);
-
-  useEffect(() => {
-    // Reset status when class changes
     const initialStatus: Record<string, AttendanceStatus> = {};
     filteredStudents.forEach(s => {
       initialStatus[s.id] = AttendanceStatus.HADIR;
@@ -51,7 +62,7 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGrade || !selectedClass || !selectedTeacher || !selectedSubject || !journal.trim()) {
-      alert('Mohon lengkapi semua data sesi dan jurnal pembelajaran!');
+      alert('Mohon lengkapi semua data sesi (Guru, Mapel, Kelas) dan jurnal pembelajaran!');
       return;
     }
 
@@ -65,6 +76,7 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
       classId: selectedClass,
       grade: selectedGrade,
       journal: journal,
+      createdAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       students: filteredStudents.map(s => ({
         studentId: s.id,
         status: studentStatus[s.id] || AttendanceStatus.HADIR
@@ -74,6 +86,17 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
     onSubmit(record);
     setIsSubmitted(true);
     window.scrollTo(0, 0);
+  };
+
+  const getActiveStatusClass = (status: AttendanceStatus) => {
+    switch(status) {
+      case AttendanceStatus.HADIR: return 'bg-emerald-600 text-white border-emerald-600';
+      case AttendanceStatus.IZIN: return 'bg-amber-500 text-white border-amber-500';
+      case AttendanceStatus.SAKIT: return 'bg-blue-600 text-white border-blue-600';
+      case AttendanceStatus.DISPENSASI: return 'bg-purple-600 text-white border-purple-600';
+      case AttendanceStatus.ALPA: return 'bg-rose-600 text-white border-rose-600';
+      default: return '';
+    }
   };
 
   if (isSubmitted) {
@@ -88,8 +111,12 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
           <button 
             onClick={() => {
               setIsSubmitted(false);
-              setSelectedClass('');
-              setSelectedGrade('');
+              if (currentUser?.role !== 'teacher') {
+                setSelectedClass('');
+                setSelectedGrade('');
+                setSelectedTeacher('');
+                setSelectedSubject('');
+              }
               setJournal('');
             }}
             className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition shadow-lg shadow-emerald-200"
@@ -101,9 +128,11 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
     );
   }
 
+  const currentTeacher = teachers.find(t => t.id === selectedTeacher);
+  const currentSubject = subjects.find(s => s.id === selectedSubject);
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header */}
       <header className="bg-blue-800 text-white shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -115,203 +144,225 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
               <p className="text-xs text-blue-100">SMAN 1 Kwanyar</p>
             </div>
           </div>
-          <Link to="/login" className="text-blue-100 hover:text-white transition bg-white/10 px-3 py-1.5 rounded-lg text-sm font-medium">
-            <i className="fas fa-user-shield mr-2"></i>Admin
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/violations" className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition shadow-sm">
+              <i className="fas fa-exclamation-triangle"></i>
+              <span>Pelanggaran</span>
+            </Link>
+            {currentUser ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold hidden sm:inline">{currentUser.role === 'admin' ? 'ADMIN SISTEM' : `GURU: ${currentTeacher?.name}`}</span>
+                {currentUser.role === 'admin' && (
+                  <Link to="/admin" className="text-blue-100 hover:text-white transition bg-white/10 px-3 py-1.5 rounded-lg text-sm font-medium">
+                    Dashboard
+                  </Link>
+                )}
+                <button onClick={onLogout} className="text-rose-200 hover:text-rose-100 transition text-sm font-bold bg-rose-900/30 px-3 py-1.5 rounded-lg">
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="text-blue-100 hover:text-white transition bg-white/10 px-3 py-1.5 rounded-lg text-sm font-medium">
+                <i className="fas fa-sign-in-alt mr-2"></i>Login
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-5xl">
-        {/* Info Box */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">
-              <i className="fas fa-calendar-alt"></i>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sesi Presensi</p>
-              <h3 className="text-xl font-bold text-slate-800">{dayName}, {dateStr}</h3>
-            </div>
-          </div>
-          <div className="hidden md:block h-10 w-[1px] bg-slate-200"></div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-2xl">
-              <i className="fas fa-clock"></i>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status Sistem</p>
-              <h3 className="text-xl font-bold text-emerald-600">Online <span className="w-2 h-2 inline-block bg-emerald-500 rounded-full animate-pulse mb-1"></span></h3>
-            </div>
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Step 1: Session Detail */}
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200">
-              <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                <i className="fas fa-info-circle text-blue-500"></i>
-                Detail Sesi & Mata Pelajaran
-              </h2>
+          {/* Section 1: Konfigurasi Sesi & Jurnal */}
+          <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-cog text-blue-600"></i> Konfigurasi Pembelajaran
+              </h3>
             </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Jenjang</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {GRADES.map(grade => (
-                    <button
-                      key={grade}
-                      type="button"
-                      onClick={() => setSelectedGrade(grade)}
-                      className={`py-2.5 rounded-xl font-bold border transition-all ${
-                        selectedGrade === grade 
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100' 
-                          : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'
-                      }`}
-                    >
-                      {grade}
-                    </button>
-                  ))}
+            
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Jenjang Kelas</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {GRADES.map(grade => (
+                      <button
+                        key={grade}
+                        type="button"
+                        disabled={currentUser?.role === 'teacher'}
+                        onClick={() => setSelectedGrade(grade)}
+                        className={`py-2.5 rounded-xl font-bold border transition-all ${
+                          selectedGrade === grade 
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg' 
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 disabled:opacity-50'
+                        }`}
+                      >
+                        {grade}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Pilih Kelas</label>
+                  <select 
+                    required
+                    disabled={!selectedGrade || currentUser?.role === 'teacher'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 font-bold"
+                    value={selectedClass}
+                    onChange={e => setSelectedClass(e.target.value)}
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {filteredClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Jam Ke</label>
+                  <select 
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                    value={selectedPeriod}
+                    onChange={e => setSelectedPeriod(e.target.value)}
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <option key={n} value={n.toString()}>{n}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Guru Pengampu</label>
+                  <select 
+                    required
+                    disabled={currentUser?.role === 'teacher'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-700 disabled:opacity-75"
+                    value={selectedTeacher}
+                    onChange={e => setSelectedTeacher(e.target.value)}
+                  >
+                    <option value="">-- Pilih Guru --</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Mata Pelajaran</label>
+                  <select 
+                    required
+                    disabled={currentUser?.role === 'teacher'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-700 disabled:opacity-75"
+                    value={selectedSubject}
+                    onChange={e => setSelectedSubject(e.target.value)}
+                  >
+                    <option value="">-- Pilih Mata Pelajaran --</option>
+                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Pilih Kelas</label>
-                <select 
+              {/* Jurnal / Materi Pembelajaran (Pindah ke Atas) */}
+              <div className="space-y-2 pt-4 border-t border-slate-100">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <i className="fas fa-pen-fancy text-amber-500"></i> Jurnal / Materi Pembelajaran
+                </label>
+                <textarea
                   required
-                  disabled={!selectedGrade}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                  value={selectedClass}
-                  onChange={e => setSelectedClass(e.target.value)}
-                >
-                  <option value="">-- Pilih Kelas --</option>
-                  {filteredClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Jam Ke</label>
-                <select 
-                  required
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={selectedPeriod}
-                  onChange={e => setSelectedPeriod(e.target.value)}
-                >
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n.toString()}>{n}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2 lg:col-span-2">
-                <label className="text-sm font-bold text-slate-700">Guru Mata Pelajaran</label>
-                <select 
-                  required
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={selectedTeacher}
-                  onChange={e => setSelectedTeacher(e.target.value)}
-                >
-                  <option value="">-- Pilih Guru --</option>
-                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Mata Pelajaran</label>
-                <select 
-                  required
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={selectedSubject}
-                  onChange={e => setSelectedSubject(e.target.value)}
-                >
-                  <option value="">-- Pilih Mapel --</option>
-                  {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                  placeholder="Tuliskan ringkasan materi atau kegiatan pembelajaran yang dilakukan hari ini..."
+                  className="w-full bg-amber-50/30 border border-amber-100 rounded-2xl p-4 focus:ring-2 focus:ring-amber-400 outline-none min-h-[120px] transition-all resize-none font-medium text-slate-700"
+                  value={journal}
+                  onChange={e => setJournal(e.target.value)}
+                ></textarea>
               </div>
             </div>
           </section>
 
-          {/* Step 2: Journal */}
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200">
-              <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                <i className="fas fa-book-open text-amber-500"></i>
-                Jurnal Pembelajaran
-              </h2>
-            </div>
-            <div className="p-6">
-              <textarea
-                required
-                placeholder="Tuliskan materi yang diajarkan, hambatan, atau catatan penting selama KBM berlangsung..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-amber-500 outline-none min-h-[120px] transition-all resize-none"
-                value={journal}
-                onChange={e => setJournal(e.target.value)}
-              ></textarea>
-            </div>
-          </section>
-
-          {/* Step 3: Student Attendance */}
+          {/* Info Banner Konfirmasi Sesi */}
           {selectedClass && (
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                <h2 className="font-bold text-slate-700 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white rounded-2xl p-5 shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 animate-fadeIn">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-xl shadow-inner">
+                  <i className="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase opacity-70 tracking-widest">Guru Pengampu</p>
+                  <p className="font-bold text-lg leading-tight">{currentTeacher?.name || 'Belum dipilih'}</p>
+                </div>
+              </div>
+              <div className="h-10 w-px bg-white/10 hidden md:block"></div>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-xl shadow-inner">
+                  <i className="fas fa-book"></i>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase opacity-70 tracking-widest">Mata Pelajaran</p>
+                  <p className="font-bold text-lg leading-tight">{currentSubject?.name || 'Belum dipilih'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 2: Daftar Presensi Siswa */}
+          {selectedClass && (
+            <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h2 className="font-black text-slate-800 uppercase tracking-tight flex items-center gap-2">
                   <i className="fas fa-users text-emerald-500"></i>
-                  Daftar Kehadiran Siswa
+                  Presensi Peserta Didik
                 </h2>
-                <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold">
-                  {filteredStudents.length} Peserta Didik
+                <div className="bg-white border border-emerald-100 text-emerald-600 px-4 py-1.5 rounded-full text-xs font-black shadow-sm">
+                  {filteredStudents.length} SISWA
                 </div>
               </div>
               
               <div className="divide-y divide-slate-100">
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map((student, idx) => (
-                    <div key={student.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold text-slate-500 border border-slate-200">
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800">{student.name}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">NIS: {student.nis}</p>
-                        </div>
+                {filteredStudents.map((student, idx) => (
+                  <div key={student.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-sm font-black text-slate-400 border border-slate-200 flex-shrink-0">
+                        {idx + 1}
                       </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.values(AttendanceStatus).map(status => (
-                          <button
-                            key={status}
-                            type="button"
-                            onClick={() => handleStatusChange(student.id, status)}
-                            className={`px-2.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all border ${
-                              studentStatus[student.id] === status 
-                                ? STATUS_COLORS[status] + ' shadow-sm' 
-                                : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'
-                            }`}
-                          >
-                            <span className="sm:mr-1">{STATUS_ICONS[status]}</span>
-                            <span className="hidden xs:inline">{status}</span>
-                            <span className="xs:hidden">{status[0]}</span>
-                          </button>
-                        ))}
+                      <div>
+                        <p className="font-black text-slate-800 text-lg uppercase tracking-tight">
+                          {student.name} 
+                          <span className={`ml-2 text-[9px] px-2 py-0.5 rounded-full ${student.gender === 'L' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {student.gender === 'L' ? 'LK' : 'PR'}
+                          </span>
+                        </p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">NIS: {student.nis}</p>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="p-16 text-center text-slate-400">
-                    <i className="fas fa-user-clock text-5xl mb-4 opacity-20"></i>
-                    <p className="font-medium">Memuat daftar siswa...</p>
+
+                    <div className="grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-3">
+                      {Object.values(AttendanceStatus).map(status => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => handleStatusChange(student.id, status)}
+                          className={`flex flex-col items-center justify-center p-2 sm:px-4 sm:py-3 rounded-2xl transition-all border-2 ${
+                            studentStatus[student.id] === status 
+                              ? getActiveStatusClass(status) + ' shadow-lg scale-105' 
+                              : 'bg-white text-slate-300 border-slate-100 hover:border-slate-200 hover:text-slate-500'
+                          }`}
+                        >
+                          <span className="text-xl sm:text-2xl mb-1">{STATUS_ICONS[status]}</span>
+                          <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-tighter leading-none">
+                            {status === AttendanceStatus.DISPENSASI ? 'Disp' : status}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
 
-              <div className="p-6 bg-slate-50 border-t border-slate-200">
+              <div className="p-8 bg-slate-50 border-t border-slate-200">
                 <button 
                   type="submit"
                   disabled={filteredStudents.length === 0}
-                  className="w-full bg-blue-800 text-white py-4 rounded-2xl font-bold hover:bg-blue-900 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg flex items-center justify-center gap-3"
+                  className="w-full bg-blue-800 text-white py-6 rounded-2xl font-black hover:bg-blue-900 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-xl flex items-center justify-center gap-4 uppercase tracking-widest"
                 >
-                  <i className="fas fa-paper-plane"></i>
-                  Simpan & Kirim Laporan Presensi
+                  <i className="fas fa-check-double text-2xl"></i>
+                  SIMPAN PRESENSI SEKARANG
                 </button>
+                <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mt-4">Pastikan data telah benar sebelum melakukan penyimpanan</p>
               </div>
             </section>
           )}

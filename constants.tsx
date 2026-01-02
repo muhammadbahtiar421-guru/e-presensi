@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ClassRoom, Subject, Teacher, Student, AttendanceStatus } from './types';
+import { ClassRoom, Subject, Teacher, Student, AttendanceStatus, ViolationItem } from './types';
 
 export const GRADES = ['X', 'XI', 'XII'];
 
@@ -20,19 +20,29 @@ export const INITIAL_SUBJECTS: Subject[] = [
 ];
 
 export const INITIAL_TEACHERS: Teacher[] = [
-  { id: '1', name: 'Budi Santoso, S.Pd', nip: '198501012010011001' },
-  { id: '2', name: 'Siti Aminah, M.Pd', nip: '198702022012012002' },
-  { id: '3', name: 'Andi Wijaya, S.Si', nip: '199003032015011003' },
+  { id: '1', name: 'Budi Santoso, S.Pd', nip: '198501012010011001', username: 'budi', password: '123' },
+  { id: '2', name: 'Siti Aminah, M.Pd', nip: '198702022012012002', username: 'siti', password: '123' },
+  { id: '3', name: 'Andi Wijaya, S.Si', nip: '199003032015011003', username: 'andi', password: '123' },
 ];
 
 export const INITIAL_STUDENTS: Student[] = [
-  { id: '1', name: 'Ahmad Fauzi', nis: '2024001', classId: '1' },
-  { id: '2', name: 'Bella Safira', nis: '2024002', classId: '1' },
-  { id: '3', name: 'Citra Kirana', nis: '2024003', classId: '1' },
-  { id: '4', name: 'Dedi Kurniawan', nis: '2024004', classId: '1' },
-  { id: '5', name: 'Eka Putri', nis: '2024005', classId: '1' },
-  { id: '6', name: 'Fajar Shiddiq', nis: '2024006', classId: '2' },
-  { id: '7', name: 'Gita Savitri', nis: '2024007', classId: '2' },
+  { id: '1', name: 'Ahmad Fauzi', nis: '2024001', classId: '1', gender: 'L' },
+  { id: '2', name: 'Bella Safira', nis: '2024002', classId: '1', gender: 'P' },
+  { id: '3', name: 'Citra Kirana', nis: '2024003', classId: '1', gender: 'P' },
+  { id: '4', name: 'Dedi Kurniawan', nis: '2024004', classId: '1', gender: 'L' },
+  { id: '5', name: 'Eka Putri', nis: '2024005', classId: '1', gender: 'P' },
+  { id: '6', name: 'Fajar Shiddiq', nis: '2024006', classId: '2', gender: 'L' },
+  { id: '7', name: 'Gita Savitri', nis: '2024007', classId: '2', gender: 'P' },
+];
+
+export const INITIAL_VIOLATIONS: ViolationItem[] = [
+  { id: 'v1', description: 'Terlambat Masuk Sekolah', category: 'Ringan', points: 5 },
+  { id: 'v2', description: 'Atribut Seragam Tidak Lengkap', category: 'Ringan', points: 5 },
+  { id: 'v3', description: 'Rambut Tidak Rapi (Laki-laki)', category: 'Ringan', points: 10 },
+  { id: 'v4', description: 'Keluar Kelas Tanpa Izin', category: 'Ringan', points: 10 },
+  { id: 'v5', description: 'Bolos Mata Pelajaran', category: 'Sedang', points: 25 },
+  { id: 'v6', description: 'Merokok di Lingkungan Sekolah', category: 'Berat', points: 75 },
+  { id: 'v7', description: 'Berkelahi / Tawuran', category: 'Berat', points: 100 },
 ];
 
 export const DAYS_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
