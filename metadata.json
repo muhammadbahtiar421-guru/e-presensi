@@ -1,0 +1,7 @@
+{
+  "name": "E-Presensi SMAN 1 Kwanyar",
+  "description": "Sistem presensi digital terpadu untuk peserta didik SMAN 1 Kwanyar dengan fitur rekapitulasi cerdas bagi admin dan kemudahan input bagi guru.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
