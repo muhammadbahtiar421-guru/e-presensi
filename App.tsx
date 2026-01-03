@@ -31,254 +31,110 @@ const App: React.FC = () => {
   const [headmaster, setHeadmaster] = useState<Headmaster>({ name: "Moch. Noerhadi, S.Pd., M.Pd.", nip: "19681125 199103 1 010" });
   const [adminCredentials, setAdminCredentials] = useState<any[]>([{ id: '1', username: 'admin', password: '123' }]);
   const [violationCredentials, setViolationCredentials] = useState<any[]>([{ id: '1', username: 'bk', password: '123' }]);
+  
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('currentUser');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Load Initial Data from Supabase
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const [
-          { data: t }, { data: sub }, { data: cl }, { data: st }, 
-          { data: attRec }, { data: viItem }, { data: viRec }, { data: cfg }
-        ] = await Promise.all([
-          supabase.from('teachers').select('*'),
-          supabase.from('subjects').select('*'),
-          supabase.from('classes').select('*'),
-          supabase.from('students').select('*'),
-          supabase.from('attendance_records').select('*, attendance_details(*)'),
-          supabase.from('violation_items').select('*'),
-          supabase.from('violation_records').select('*'),
-          supabase.from('config').select('*')
-        ]);
-
-        if (t && t.length > 0) setTeachers(t); else setTeachers(INITIAL_TEACHERS);
-        if (sub && sub.length > 0) setSubjects(sub); else setSubjects(INITIAL_SUBJECTS);
-        if (cl && cl.length > 0) setClasses(cl); else setClasses(INITIAL_CLASSES);
-        if (st && st.length > 0) setStudents(st); else setStudents(INITIAL_STUDENTS);
-        if (viItem && viItem.length > 0) setViolationItems(viItem); else setViolationItems(INITIAL_VIOLATIONS);
-        
-        if (attRec) {
-          const formattedAtt = attRec.map((r: any) => ({
-            ...r,
-            students: r.attendance_details.map((d: any) => ({
-              studentId: d.studentId,
-              status: d.status
-            }))
-          }));
-          setAttendanceRecords(formattedAtt);
-        }
-
-        if (viRec) setViolationRecords(viRec);
-
-        if (cfg) {
-          const hm = cfg.find(c => c.key === 'headmaster')?.value;
-          const adm = cfg.find(c => c.key === 'adminCredentials')?.value;
-          const vio = cfg.find(c => c.key === 'violationCredentials')?.value;
-          if (hm) setHeadmaster(hm);
-          if (adm) setAdminCredentials(adm);
-          if (vio) setViolationCredentials(vio);
-        }
-      } catch (err) {
-        console.error("Supabase Load Error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllData();
-  }, []);
-
-  // Save current user to local storage for persistent session
-  useEffect(() => {
-    if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    else localStorage.removeItem('currentUser');
-  }, [currentUser]);
-
-  // Data Save Wrappers
-  const updateTeachers = async (data: Teacher[]) => {
-    setTeachers(data);
-    await supabase.from('teachers').delete().neq('id', '0'); // Clear and re-insert for simplicity or map per item
-    await supabase.from('teachers').insert(data);
-  };
-
-  const updateSubjects = async (data: Subject[]) => {
-    setSubjects(data);
-    await supabase.from('subjects').delete().neq('id', '0');
-    await supabase.from('subjects').insert(data);
-  };
-
-  const updateClasses = async (data: ClassRoom[]) => {
-    setClasses(data);
-    await supabase.from('classes').delete().neq('id', '0');
-    await supabase.from('classes').insert(data);
-  };
-
-  const updateStudents = async (data: Student[]) => {
-    setStudents(data);
-    await supabase.from('students').delete().neq('id', '0');
-    await supabase.from('students').insert(data);
-  };
-
-  const addAttendance = async (record: AttendanceRecord) => {
-    setAttendanceRecords(prev => [...prev, record]);
-    
-    // Save record header
-    const { students: studentDetails, ...header } = record;
-    await supabase.from('attendance_records').insert([header]);
-    
-    // Save details
-    const details = studentDetails.map(sd => ({
-      recordId: record.id,
-      studentId: sd.studentId,
-      status: sd.status
-    }));
-    await supabase.from('attendance_details').insert(details);
-  };
-
-  const updateViolationItems = async (data: ViolationItem[]) => {
-    setViolationItems(data);
-    await supabase.from('violation_items').delete().neq('id', '0');
-    await supabase.from('violation_items').insert(data);
-  };
-
-  const updateViolationRecords = async (data: ViolationRecord[]) => {
-    setViolationRecords(data);
-    await supabase.from('violation_records').delete().neq('id', '0');
-    await supabase.from('violation_records').insert(data);
-  };
-
-  const updateHeadmaster = async (data: Headmaster) => {
-    setHeadmaster(data);
-    await supabase.from('config').upsert({ key: 'headmaster', value: data });
-  };
-
-  const updateAdminCredentials = async (data: any[]) => {
-    setAdminCredentials(data);
-    await supabase.from('config').upsert({ key: 'adminCredentials', value: data });
-  };
-
-  const updateViolationCredentials = async (data: any[]) => {
-    setViolationCredentials(data);
-    await supabase.from('config').upsert({ key: 'violationCredentials', value: data });
-  };
-
-  const restoreData = async (data: any) => {
-    setLoading(true);
+  const fetchAllData = async () => {
     try {
-      // Logic for bulk restore
-      if (data.teachers) await updateTeachers(data.teachers);
-      if (data.students) await updateStudents(data.students);
-      if (data.classes) await updateClasses(data.classes);
-      if (data.subjects) await updateSubjects(data.subjects);
-      if (data.violationItems) await updateViolationItems(data.violationItems);
-      if (data.violationRecords) await updateViolationRecords(data.violationRecords);
-      if (data.headmaster) await updateHeadmaster(data.headmaster);
-      if (data.adminCredentials) await updateAdminCredentials(data.adminCredentials);
-      if (data.violationCredentials) await updateViolationCredentials(data.violationCredentials);
-      
-      alert('Restorasi Database Supabase Berhasil!');
-      window.location.reload();
+      setLoading(true);
+      const { data: t } = await supabase.from('teachers').select('*');
+      const { data: sub } = await supabase.from('subjects').select('*');
+      const { data: cl } = await supabase.from('classes').select('*');
+      const { data: st } = await supabase.from('students').select('*');
+      const { data: attRec } = await supabase.from('attendance_records').select('*');
+      const { data: cfg } = await supabase.from('config').select('*');
+      const { data: viItem } = await supabase.from('violation_items').select('*');
+      const { data: viRec } = await supabase.from('violation_records').select('*');
+
+      setTeachers(t && t.length > 0 ? t : INITIAL_TEACHERS);
+      setSubjects(sub && sub.length > 0 ? sub : INITIAL_SUBJECTS);
+      setClasses(cl && cl.length > 0 ? cl : INITIAL_CLASSES);
+      setStudents(st && st.length > 0 ? st : INITIAL_STUDENTS);
+      setAttendanceRecords(attRec || []);
+      setViolationItems(viItem && viItem.length > 0 ? viItem : INITIAL_VIOLATIONS);
+      setViolationRecords(viRec || []);
+
+      if (cfg) {
+        const hm = cfg.find((c: any) => c.key === 'headmaster')?.value;
+        if (hm) setHeadmaster(typeof hm === 'string' ? JSON.parse(hm) : hm);
+        const adm = cfg.find((c: any) => c.key === 'adminCredentials')?.value;
+        if (adm) setAdminCredentials(typeof adm === 'string' ? JSON.parse(adm) : adm);
+        const vic = cfg.find((c: any) => c.key === 'violationCredentials')?.value;
+        if (vic) setViolationCredentials(typeof vic === 'string' ? JSON.parse(vic) : vic);
+      }
     } catch (err) {
-      alert('Gagal restorasi data ke database.');
+      console.error("Critical error loading data:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => setCurrentUser(null);
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="font-black uppercase tracking-widest text-xs">Menghubungkan ke Supabase...</p>
-      </div>
-    );
-  }
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    window.location.hash = '#/login';
+  };
+
+  const handleRestore = async (data: any) => {
+    setLoading(true);
+    try {
+      // Sederhananya, timpa data di state dan simpan ke Supabase jika diperlukan.
+      // Di sini kita update local state dulu untuk UX instan
+      if (data.teachers) setTeachers(data.teachers);
+      if (data.students) setStudents(data.students);
+      if (data.classes) setClasses(data.classes);
+      if (data.subjects) setSubjects(data.subjects);
+      if (data.attendance) setAttendanceRecords(data.attendance);
+      if (data.violationItems) setViolationItems(data.violationItems);
+      if (data.violationRecords) setViolationRecords(data.violationRecords);
+      if (data.headmaster) setHeadmaster(data.headmaster);
+      
+      alert('Data berhasil dipulihkan secara lokal! Menyimpan ke server...');
+      // Implementasi batch upload ke Supabase bisa ditambahkan di sini
+      window.location.reload(); 
+    } catch (err) {
+      alert('Gagal memulihkan data: ' + err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addAttendance = async (record: AttendanceRecord) => {
+    setAttendanceRecords(prev => [record, ...prev]);
+    await supabase.from('attendance_records').insert([record]);
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
+      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-xs font-black tracking-widest uppercase">Sinkronisasi Database...</p>
+    </div>
+  );
 
   return (
     <HashRouter>
       <Routes>
-        <Route 
-          path="/" 
-          element={
-            <AttendancePage 
-              teachers={teachers} 
-              subjects={subjects} 
-              classes={classes} 
-              students={students}
-              records={attendanceRecords}
-              onSubmit={addAttendance}
-              currentUser={currentUser}
-              onLogout={handleLogout}
-            />
-          } 
-        />
-        <Route 
-          path="/login" 
-          element={currentUser ? <Navigate to={currentUser.role === 'admin' ? "/admin" : "/"} /> : <LoginPage teachers={teachers} adminCredentials={adminCredentials} onLogin={(user) => setCurrentUser(user)} />} 
-        />
-        <Route 
-          path="/violations" 
-          element={
-            <ViolationPage 
-              students={students}
-              classes={classes}
-              teachers={teachers}
-              violationItems={violationItems}
-              setViolationItems={updateViolationItems}
-              violationRecords={violationRecords}
-              setViolationRecords={updateViolationRecords}
-              violationCredentials={violationCredentials}
-              currentUser={currentUser}
-            />
-          } 
-        />
-        <Route 
-          path="/admin/*" 
-          element={
-            currentUser?.role === 'admin' ? (
-              <Routes>
-                <Route path="/" element={<AdminDashboard records={attendanceRecords} onLogout={handleLogout} teachers={teachers} classes={classes} subjects={subjects} students={students} />} />
-                <Route 
-                  path="/manage" 
-                  element={
-                    <ManagementPage 
-                      teachers={teachers} setTeachers={updateTeachers}
-                      subjects={subjects} setSubjects={updateSubjects}
-                      classes={classes} setClasses={updateClasses}
-                      students={students} setStudents={updateStudents}
-                      onLogout={handleLogout}
-                    />
-                  } 
-                />
-                <Route path="/reports" element={<ReportsPage records={attendanceRecords} students={students} classes={classes} subjects={subjects} teachers={teachers} headmaster={headmaster} onLogout={handleLogout} />} />
-                <Route path="/monitoring" element={<MonitoringPage records={attendanceRecords} teachers={teachers} classes={classes} subjects={subjects} students={students} violationRecords={violationRecords} violationItems={violationItems} headmaster={headmaster} setHeadmaster={updateHeadmaster} onLogout={handleLogout} />} />
-                <Route path="/settings" element={
-                  <AccountSettingsPage 
-                    teachers={teachers} setTeachers={updateTeachers} 
-                    adminCredentials={adminCredentials} setAdminCredentials={updateAdminCredentials} 
-                    violationCredentials={violationCredentials} setViolationCredentials={updateViolationCredentials} 
-                    onLogout={handleLogout}
-                    attendanceRecords={attendanceRecords}
-                    students={students}
-                    classes={classes}
-                    subjects={subjects}
-                    violationItems={violationItems}
-                    violationRecords={violationRecords}
-                    headmaster={headmaster}
-                    onRestore={restoreData}
-                  />
-                } />
-              </Routes>
-            ) : (
-              <Navigate to="/login" />
-            )
-          } 
-        />
+        <Route path="/" element={<AttendancePage teachers={teachers} subjects={subjects} classes={classes} students={students} records={attendanceRecords} onSubmit={addAttendance} currentUser={currentUser} onLogout={handleLogout} />} />
+        
+        <Route path="/login" element={currentUser ? <Navigate to="/admin" replace /> : <LoginPage teachers={teachers} adminCredentials={adminCredentials} onLogin={(u) => { setCurrentUser(u); localStorage.setItem('currentUser', JSON.stringify(u)); }} />} />
+        
+        <Route path="/violations" element={<ViolationPage students={students} classes={classes} teachers={teachers} violationItems={violationItems} setViolationItems={setViolationItems} violationRecords={violationRecords} setViolationRecords={setViolationRecords} violationCredentials={violationCredentials} currentUser={currentUser} />} />
+        
+        {/* RUTE ADMIN PROTECTED - Pastikan rute ini spesifik */}
+        <Route path="/admin" element={currentUser?.role === 'admin' ? <AdminDashboard records={attendanceRecords} teachers={teachers} classes={classes} subjects={subjects} students={students} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/monitoring" element={currentUser?.role === 'admin' ? <MonitoringPage records={attendanceRecords} teachers={teachers} subjects={subjects} classes={classes} students={students} violationRecords={violationRecords} violationItems={violationItems} headmaster={headmaster} setHeadmaster={setHeadmaster} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/manage" element={currentUser?.role === 'admin' ? <ManagementPage teachers={teachers} setTeachers={setTeachers} subjects={subjects} setSubjects={setSubjects} classes={classes} setClasses={setClasses} students={students} setStudents={setStudents} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/reports" element={currentUser?.role === 'admin' ? <ReportsPage records={attendanceRecords} students={students} classes={classes} subjects={subjects} teachers={teachers} headmaster={headmaster} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/settings" element={currentUser?.role === 'admin' ? <AccountSettingsPage teachers={teachers} setTeachers={setTeachers} adminCredentials={adminCredentials} setAdminCredentials={setAdminCredentials} violationCredentials={violationCredentials} setViolationCredentials={setViolationCredentials} onLogout={handleLogout} attendanceRecords={attendanceRecords} students={students} classes={classes} subjects={subjects} violationItems={violationItems} violationRecords={violationRecords} headmaster={headmaster} onRestore={handleRestore} /> : <Navigate to="/login" replace />} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
   );

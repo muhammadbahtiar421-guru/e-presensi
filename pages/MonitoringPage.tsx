@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { AttendanceRecord, Teacher, ClassRoom, Student, Headmaster, AttendanceStatus, ViolationRecord, ViolationItem, Subject } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface MonitoringPageProps {
   records: AttendanceRecord[];
@@ -18,7 +18,7 @@ interface MonitoringPageProps {
 }
 
 const MonitoringPage: React.FC<MonitoringPageProps> = ({ 
-  records, teachers, subjects, classes, students, violationRecords, violationItems, headmaster, setHeadmaster, onLogout 
+  records = [], teachers = [], subjects = [], classes = [], students = [], violationRecords = [], violationItems = [], headmaster, setHeadmaster, onLogout 
 }) => {
   const [editingKS, setEditingKS] = useState(false);
   const [ksForm, setKsForm] = useState(headmaster);
@@ -30,15 +30,21 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
     setEditingKS(false);
   };
 
-  // 1. Aktivitas Mengajar Detail
-  const dailyActivities = records.filter(r => r.date === selectedDate);
+  // Safe filtering for records
+  const safeRecords = Array.isArray(records) ? records : [];
+  const safeClasses = Array.isArray(classes) ? classes : [];
+  const safeViolationRecords = Array.isArray(violationRecords) ? violationRecords : [];
+  const safeViolationItems = Array.isArray(violationItems) ? violationItems : [];
 
-  // 2. Monitoring Ketidakhadiran
-  const classAbsenceData = classes.map(c => {
-    const classRecords = records.filter(r => r.classId === c.id && r.date === selectedDate);
-    const alpaCount = classRecords.reduce((acc, r) => acc + r.students.filter(s => s.status === AttendanceStatus.ALPA).length, 0);
-    const sakitCount = classRecords.reduce((acc, r) => acc + r.students.filter(s => s.status === AttendanceStatus.SAKIT).length, 0);
-    const izinCount = classRecords.reduce((acc, r) => acc + r.students.filter(s => s.status === AttendanceStatus.IZIN).length, 0);
+  // 1. Aktivitas Mengajar Detail
+  const dailyActivities = safeRecords.filter(r => r.date === selectedDate);
+
+  // 2. Monitoring Ketidakhadiran dengan safety check untuk r.students
+  const classAbsenceData = safeClasses.map(c => {
+    const classRecords = safeRecords.filter(r => r.classId === c.id && r.date === selectedDate);
+    const alpaCount = classRecords.reduce((acc, r) => acc + (Array.isArray(r.students) ? r.students.filter(s => s.status === AttendanceStatus.ALPA).length : 0), 0);
+    const sakitCount = classRecords.reduce((acc, r) => acc + (Array.isArray(r.students) ? r.students.filter(s => s.status === AttendanceStatus.SAKIT).length : 0), 0);
+    const izinCount = classRecords.reduce((acc, r) => acc + (Array.isArray(r.students) ? r.students.filter(s => s.status === AttendanceStatus.IZIN).length : 0), 0);
     return {
       name: c.name,
       alpa: alpaCount,
@@ -48,18 +54,18 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
     };
   }).filter(c => c.totalAbsen > 0);
 
-  // 3. Monitoring Pelanggaran (Kedisiplinan)
-  const todayViolations = violationRecords.filter(r => r.date === selectedDate);
-  const currentMonth = selectedDate.slice(0, 7);
-  const monthViolations = violationRecords.filter(r => r.date.startsWith(currentMonth));
+  // 3. Monitoring Pelanggaran (Kedisiplinan) dengan safety check
+  const todayViolations = safeViolationRecords.filter(r => r.date === selectedDate);
+  const currentMonth = selectedDate ? selectedDate.slice(0, 7) : "";
+  const monthViolations = safeViolationRecords.filter(r => r.date && r.date.startsWith(currentMonth));
 
   const violationStatsByCategory = [
-    { name: 'Ringan', value: monthViolations.filter(r => violationItems.find(vi => vi.id === r.violationItemId)?.category === 'Ringan').length, color: '#3b82f6' },
-    { name: 'Sedang', value: monthViolations.filter(r => violationItems.find(vi => vi.id === r.violationItemId)?.category === 'Sedang').length, color: '#f59e0b' },
-    { name: 'Berat', value: monthViolations.filter(r => violationItems.find(vi => vi.id === r.violationItemId)?.category === 'Berat').length, color: '#f43f5e' },
+    { name: 'Ringan', value: monthViolations.filter(r => safeViolationItems.find(vi => vi.id === r.violationItemId)?.category === 'Ringan').length, color: '#3b82f6' },
+    { name: 'Sedang', value: monthViolations.filter(r => safeViolationItems.find(vi => vi.id === r.violationItemId)?.category === 'Sedang').length, color: '#f59e0b' },
+    { name: 'Berat', value: monthViolations.filter(r => safeViolationItems.find(vi => vi.id === r.violationItemId)?.category === 'Berat').length, color: '#f43f5e' },
   ];
 
-  const classViolationRekap = classes.map(c => {
+  const classViolationRekap = safeClasses.map(c => {
     const vCountMonth = monthViolations.filter(r => {
       const s = students.find(stud => stud.id === r.studentId);
       return s?.classId === c.id;
@@ -74,8 +80,6 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
   return (
     <AdminLayout onLogout={onLogout}>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* Update Data Kasek & Filter */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
             <div className="flex justify-between items-center mb-6">
@@ -135,7 +139,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 </div>
                 <div className="bg-white/10 p-2 rounded-xl border border-white/10">
                   <p className="text-sm font-black text-amber-400">
-                    {monthViolations.reduce((acc, r) => acc + (violationItems.find(vi => vi.id === r.violationItemId)?.points || 0), 0)}
+                    {monthViolations.reduce((acc, r) => acc + (safeViolationItems.find(vi => vi.id === r.violationItemId)?.points || 0), 0)}
                   </p>
                   <p className="text-[8px] uppercase font-bold text-slate-300">Total Poin</p>
                 </div>
@@ -144,7 +148,6 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
           </div>
         </div>
 
-        {/* Monitoring Guru & Grafik */}
         <div className="lg:col-span-3 space-y-8">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
@@ -217,14 +220,6 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-center gap-4 mt-4">
-                {violationStatsByCategory.map(cat => (
-                  <div key={cat.name} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }}></div>
-                    <span className="text-[10px] font-black uppercase text-slate-500">{cat.name}: {cat.value}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
@@ -252,11 +247,6 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                         <td className="px-4 py-3 text-center font-black text-slate-900">{c.month} Insiden</td>
                       </tr>
                     ))}
-                    {classViolationRekap.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="px-4 py-10 text-center text-slate-300 italic">Belum ada catatan pelanggaran bulan ini.</td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -293,11 +283,6 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                   <td className="px-6 py-4 text-center bg-slate-50 font-black text-lg">{c.totalAbsen}</td>
                 </tr>
               ))}
-              {classAbsenceData.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-300 italic font-bold">Tidak ada siswa yang absen pada tanggal ini.</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
