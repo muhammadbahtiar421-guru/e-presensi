@@ -5,7 +5,7 @@ import { Teacher, User } from '../types';
 
 interface LoginPageProps {
   teachers: Teacher[];
-  adminCredentials: any;
+  adminCredentials: any[];
   onLogin: (user: User) => void;
 }
 
@@ -18,9 +18,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ teachers, adminCredentials, onLog
     e.preventDefault();
     setError('');
     
-    // Check Admin with dynamic credentials
-    if (username === adminCredentials.username && password === adminCredentials.password) {
-      onLogin({ id: 'admin', username: adminCredentials.username, role: 'admin' });
+    // Check Admin with dynamic credentials list
+    const admin = adminCredentials.find(acc => acc.username === username && acc.password === password);
+    if (admin) {
+      onLogin({ id: admin.id, username: admin.username, role: 'admin' });
       return;
     }
 
@@ -36,7 +37,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ teachers, adminCredentials, onLog
       return;
     }
 
-    // Tampilan notifikasi salah yang simpel
     setError('Username atau password salah!');
   };
 

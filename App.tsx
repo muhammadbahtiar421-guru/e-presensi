@@ -55,12 +55,12 @@ const App: React.FC = () => {
 
   const [adminCredentials, setAdminCredentials] = useState(() => {
     const saved = localStorage.getItem('adminCredentials');
-    return saved ? JSON.parse(saved) : { username: 'admin', password: '123' };
+    return saved ? JSON.parse(saved) : [{ id: '1', username: 'admin', password: '123' }];
   });
 
   const [violationCredentials, setViolationCredentials] = useState(() => {
     const saved = localStorage.getItem('violationCredentials');
-    return saved ? JSON.parse(saved) : { username: 'bk', password: '123' };
+    return saved ? JSON.parse(saved) : [{ id: '1', username: 'bk', password: '123' }];
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -122,6 +122,7 @@ const App: React.FC = () => {
               subjects={subjects} 
               classes={classes} 
               students={students}
+              records={attendanceRecords}
               onSubmit={addAttendance}
               currentUser={currentUser}
               onLogout={handleLogout}
@@ -167,7 +168,7 @@ const App: React.FC = () => {
                   } 
                 />
                 <Route path="/reports" element={<ReportsPage records={attendanceRecords} students={students} classes={classes} subjects={subjects} teachers={teachers} headmaster={headmaster} onLogout={handleLogout} />} />
-                <Route path="/monitoring" element={<MonitoringPage records={attendanceRecords} teachers={teachers} classes={classes} students={students} violationRecords={violationRecords} violationItems={violationItems} headmaster={headmaster} setHeadmaster={setHeadmaster} onLogout={handleLogout} />} />
+                <Route path="/monitoring" element={<MonitoringPage records={attendanceRecords} teachers={teachers} classes={classes} subjects={subjects} students={students} violationRecords={violationRecords} violationItems={violationItems} headmaster={headmaster} setHeadmaster={setHeadmaster} onLogout={handleLogout} />} />
                 <Route path="/settings" element={
                   <AccountSettingsPage 
                     teachers={teachers} setTeachers={setTeachers} 

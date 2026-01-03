@@ -9,12 +9,13 @@ interface AttendancePageProps {
   subjects: Subject[];
   classes: ClassRoom[];
   students: Student[];
+  records: AttendanceRecord[];
   onSubmit: (record: AttendanceRecord) => void;
   currentUser: User | null;
   onLogout: () => void;
 }
 
-const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, classes, students, onSubmit, currentUser, onLogout }) => {
+const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, classes, students, records, onSubmit, currentUser, onLogout }) => {
   const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
@@ -23,9 +24,18 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
   const [journal, setJournal] = useState('');
   const [studentStatus, setStudentStatus] = useState<Record<string, AttendanceStatus>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  const now = new Date();
-  const dayName = DAYS_ID[now.getDay()];
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dayName = DAYS_ID[currentTime.getDay()];
+  const dateStr = currentTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   useEffect(() => {
     if (currentUser?.role === 'teacher' && currentUser.teacherId) {
@@ -55,6 +65,19 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
     setStudentStatus(initialStatus);
   }, [selectedClass]);
 
+  // Duplication Check
+  const checkDuplicate = () => {
+    const today = currentTime.toISOString().split('T')[0];
+    return records.find(r => 
+      r.date === today && 
+      r.teacherId === selectedTeacher && 
+      r.classId === selectedClass && 
+      r.subjectId === selectedSubject
+    );
+  };
+
+  const duplicateRecord = checkDuplicate();
+
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setStudentStatus(prev => ({ ...prev, [studentId]: status }));
   };
@@ -63,6 +86,11 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
     e.preventDefault();
     if (!selectedGrade || !selectedClass || !selectedTeacher || !selectedSubject || !journal.trim()) {
       alert('Mohon lengkapi semua data sesi (Guru, Mapel, Kelas) dan jurnal pembelajaran!');
+      return;
+    }
+
+    if (duplicateRecord) {
+      alert('Gagal! Anda sudah melakukan presensi untuk kelas dan mata pelajaran ini hari ini.');
       return;
     }
 
@@ -76,7 +104,7 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
       classId: selectedClass,
       grade: selectedGrade,
       journal: journal,
-      createdAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       students: filteredStudents.map(s => ({
         studentId: s.id,
         status: studentStatus[s.id] || AttendanceStatus.HADIR
@@ -171,6 +199,35 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-5xl">
+        <div className="mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center animate-fadeIn">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+              <i className="far fa-calendar-alt"></i>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Hari & Tanggal Sistem</p>
+              <p className="font-bold text-slate-800 uppercase text-sm">{dayName}, {dateStr}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Waktu Sekarang</p>
+            <p className="font-black text-blue-700 text-xl tracking-tighter">{timeStr}</p>
+          </div>
+        </div>
+
+        {duplicateRecord && (
+          <div className="mb-6 bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl flex items-start gap-3 animate-shake">
+            <i className="fas fa-exclamation-circle text-rose-500 text-xl mt-1"></i>
+            <div>
+              <p className="font-black text-rose-800 text-sm uppercase">Peringatan Duplikasi Presensi</p>
+              <p className="text-xs text-rose-600 font-medium mt-1">
+                Sistem mendeteksi Anda telah melakukan presensi hari ini untuk mata pelajaran <span className="font-bold">{currentSubject?.name}</span> di kelas <span className="font-bold">{classes.find(c => c.id === selectedClass)?.name}</span>.
+                Mohon tidak mengulang presensi yang sama.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Section 1: Konfigurasi Sesi & Jurnal */}
           <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
@@ -258,7 +315,6 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
                 </div>
               </div>
 
-              {/* Jurnal / Materi Pembelajaran (Pindah ke Atas) */}
               <div className="space-y-2 pt-4 border-t border-slate-100">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                   <i className="fas fa-pen-fancy text-amber-500"></i> Jurnal / Materi Pembelajaran
@@ -356,11 +412,11 @@ const AttendancePage: React.FC<AttendancePageProps> = ({ teachers, subjects, cla
               <div className="p-8 bg-slate-50 border-t border-slate-200">
                 <button 
                   type="submit"
-                  disabled={filteredStudents.length === 0}
+                  disabled={filteredStudents.length === 0 || !!duplicateRecord}
                   className="w-full bg-blue-800 text-white py-6 rounded-2xl font-black hover:bg-blue-900 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed text-xl flex items-center justify-center gap-4 uppercase tracking-widest"
                 >
                   <i className="fas fa-check-double text-2xl"></i>
-                  SIMPAN PRESENSI SEKARANG
+                  {duplicateRecord ? 'PRESENSI SUDAH DILAKUKAN' : 'SIMPAN PRESENSI SEKARANG'}
                 </button>
                 <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mt-4">Pastikan data telah benar sebelum melakukan penyimpanan</p>
               </div>

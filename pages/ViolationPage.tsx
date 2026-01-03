@@ -12,7 +12,7 @@ interface ViolationPageProps {
   setViolationItems: (v: ViolationItem[]) => void;
   violationRecords: ViolationRecord[];
   setViolationRecords: (v: ViolationRecord[]) => void;
-  violationCredentials: any;
+  violationCredentials: any[];
   currentUser: User | null;
 }
 
@@ -49,7 +49,8 @@ const ViolationPage: React.FC<ViolationPageProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (authForm.username === violationCredentials.username && authForm.password === violationCredentials.password) {
+    const bk = violationCredentials.find(acc => acc.username === authForm.username && acc.password === authForm.password);
+    if (bk) {
       setIsAuth(true);
       setAuthError('');
     } else {
@@ -134,7 +135,6 @@ const ViolationPage: React.FC<ViolationPageProps> = ({
 
   const { catStats, genderStats } = getDashboardData();
 
-  // Helper filters for reports
   const getDailyViolations = () => {
     return violationRecords.filter(r => {
       const student = students.find(s => s.id === r.studentId);
