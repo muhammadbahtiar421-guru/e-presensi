@@ -1,33 +1,34 @@
 
 export enum AttendanceStatus {
-  HADIR = 'Hadir',
-  IZIN = 'Izin',
-  SAKIT = 'Sakit',
-  DISPENSASI = 'Dispensasi',
-  ALPA = 'Alpa'
+  HADIR = 'H',
+  IZIN = 'I',
+  SAKIT = 'S',
+  ALFA = 'A',
+  DISPENSASI = 'D'
 }
 
-export interface Student {
-  id: string;
-  name: string;
-  nis: string;
-  classId: string;
-  gender: 'L' | 'P';
-}
+export type UserRole = 'ADMIN' | 'GURU' | 'BK' | 'KEPALA_SEKOLAH';
 
 export interface Teacher {
   id: string;
   name: string;
   nip: string;
-  subjectId?: string;
-  classId?: string;
-  username?: string;
-  password?: string;
+  assignedClasses: string[];
+  subjects: string[];
 }
 
-export interface Headmaster {
+export interface Student {
+  id: string;
   name: string;
-  nip: string;
+  classId: string;
+  gender: 'L' | 'P';
+  nis?: string;
+}
+
+export interface SchoolClass {
+  id: string;
+  name: string;
+  grade: 'X' | 'XI' | 'XII';
 }
 
 export interface Subject {
@@ -35,48 +36,51 @@ export interface Subject {
   name: string;
 }
 
-export interface ClassRoom {
-  id: string;
-  name: string;
-  grade: string;
+export interface StudentAttendance {
+  studentId: string;
+  status: AttendanceStatus;
 }
 
-export interface AttendanceRecord {
+export interface PresenceRecord {
   id: string;
-  date: string;
-  day: string;
-  period: string;
+  timestamp: string;
   teacherId: string;
-  subjectId: string;
   classId: string;
-  grade: string;
+  subjectId: string;
+  period: string;
   journal: string;
-  createdAt: string; 
-  students: {
-    studentId: string;
-    status: AttendanceStatus;
-  }[];
+  studentsAttendance: StudentAttendance[]; // Detail kehadiran siswa per sesi
 }
 
-export interface ViolationItem {
+export interface ViolationType {
   id: string;
-  description: string;
-  category: 'Ringan' | 'Sedang' | 'Berat';
+  label: string;
   points: number;
 }
 
-export interface ViolationRecord {
+export interface DisciplineViolation {
   id: string;
-  date: string;
   studentId: string;
-  violationItemId: string;
-  notes: string;
+  type: string;
+  points: number;
+  description: string;
+  date: string;
   reporter: string;
+  classId: string;
 }
 
-export interface User {
-  id: string;
-  username: string;
-  role: 'admin' | 'teacher';
-  teacherId?: string;
+export interface PrincipalInfo {
+  name: string;
+  nip: string;
+}
+
+export interface AppState {
+  teachers: Teacher[];
+  students: Student[];
+  classes: SchoolClass[];
+  subjects: Subject[];
+  presences: PresenceRecord[];
+  violations: DisciplineViolation[];
+  violationTypes: ViolationType[];
+  principal: PrincipalInfo; // Data Kepala Sekolah yang bisa diubah
 }
